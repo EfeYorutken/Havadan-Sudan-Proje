@@ -18,7 +18,7 @@ Supervised by Prof. Dr. Tolga Kurtuluş Çapın
 Understanding the behaviours of fluids and utilizing it for development of technology
 is vital in many sectors. Planes and space exploration relies on atmospheric phenomena
 to generate lift. Vehicles, trains and ships need to be optimized for least possible
-drag to achieve higher efficiency and increase economic profitablity. In medicane,
+drag to achieve higher efficiency and increase economic profitablity. In medicine,
  heart valve surgery includes designing custom artificial valves for patients and
  the design requires modeling blood flow of the patient. Natural events, weather
  and climiate change predictions are only possible with a sufficiently accurate
