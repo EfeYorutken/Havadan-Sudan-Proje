@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Boltzmann Fluids CFD Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="flex h-screen">
+        <!-- Sidebar -->
+        <div class="w-64 bg-gray-800 text-white p-4">
+            <h2 class="text-xl font-bold mb-6">Boltzmann Fluids</h2>
+            <nav>
+                <ul>
+                    <li class="mb-2 bg-blue-600 p-2 rounded">Simulation Setup</li>
+                    <li class="mb-2 hover:bg-gray-700 p-2 rounded">Scenarios</li>
+                    <li class="mb-2 hover:bg-gray-700 p-2 rounded">Visualization Settings</li>
+                    <li class="mb-2 hover:bg-gray-700 p-2 rounded">GPU Management</li>
+                    <li class="mb-2 hover:bg-gray-700 p-2 rounded">Data Export</li>
+                </ul>
+            </nav>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="flex-1 flex flex-col">
+            <!-- Toolbar -->
+            <div class="bg-white border-b p-4 flex justify-between items-center">
+                <div>
+                    <button class="bg-green-500 text-white px-4 py-2 rounded mr-2">Run Simulation</button>
+                    <button class="bg-blue-500 text-white px-4 py-2 rounded">Pause</button>
+                </div>
+                <div>
+                    <select class="border rounded p-2 mr-2">
+                        <option>D3Q15 Configuration</option>
+                        <option>D3Q19 Configuration</option>
+                        <option>D3Q27 Configuration</option>
+                    </select>
+                    <select class="border rounded p-2">
+                        <option>64-bit Precision</option>
+                        <option>32-bit Precision</option>
+                        <option>16-bit Precision</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Main Workspace -->
+            <div class="flex flex-1">
+                <!-- Simulation Parameters -->
+                <div class="w-1/3 bg-white p-4 border-r">
+                    <h3 class="font-bold mb-4">Simulation Parameters</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block">Fluid Velocity</label>
+                            <input type="range" class="w-full" min="0" max="100">
+                        </div>
+                        <div>
+                            <label class="block">Select</label>
+                            <select class="w-full border p-2">
+                                <option>Condition 1</option>
+                                <option>Condition 2</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Visualization Area -->
+                <div class="w-2/3 bg-gray-200 flex items-center justify-center">
+                    <div class="bg-gray-300 w-5/6 h-5/6 flex items-center justify-center">
+                        <p class="text-gray-500">Real-Time Visualization Placeholder</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status Bar -->
+            <div class="bg-gray-700 text-white p-2 flex justify-between">
+                <span>Status: Simulation Running</span>
+                <span>Average GPU Utilization: 78% | Total VRAM: 48GB/64GB</span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
