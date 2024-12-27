@@ -1,0 +1,31 @@
+*{
+	background-color: #36363d;
+	padding : 0px;
+	margin : 0px;
+}
+canvas{
+	//background-color : red;
+	margin-left : 30vw;
+	margin-top : 30vh;
+}
+
+div.param_box{
+	//background-color:red;
+	justify-content:center;
+	width:12vw;
+	margin-bottom:1vh;
+	font-size:50px;
+	margin-left : 44vw;
+	border:solid 2px black;
+}
+
+input.param{
+	width:10vw;
+	margin-left:1vw;
+}
+
+div.sliders{
+	background-color:red;
+	position:absolute;
+	margin-top: 50vh;
+}
