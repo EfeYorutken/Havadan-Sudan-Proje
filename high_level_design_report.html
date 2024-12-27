@@ -1,0 +1,495 @@
+<html>
+	<head>
+		<style>
+body{
+	padding: 10%;
+}
+		</style>
+	</head>
+	<body>
+		<h1>High-Level Design Report<br>
+			for<br>
+			Boltzmann Fluids</h1><br>
+		<h2>Project Title: BoltzmannFluids: High-Performance Lattice Boltzmann
+			Method Simulation on Multi-GPU Systems</h2>
+		<h3>Project Members:</h3>
+		<ul>
+			<li>Efe Yörütken</li>
+			<li>Furkan Ünsal</li>
+			<li>Mustafa Baran Ercan</li>
+			<li>Nazlı İrem Akyol</li>
+		</ul>
+			Date: 27.12.2024
+
+		<h2>Table of Contents</h2>
+		1. Introduction _______________________________________________________________ 3<br>
+		1.1. Purpose of the System ___________________________________________________ 3<br>
+		1.2. Design Goals __________________________________________________________ 3<br>
+		1.3. Definitions, Acronyms, and Abbreviations____________________________________ 5<br>
+		1.4. Overview _____________________________________________________________ 5<br>
+		2. Current Software Architecture _________________________________________________ 6<br>
+		2.1. Lattice Boltzmann Method Algorithm _______________________________________ 6<br>
+		2.2. Lattice Boltzmann Method Algorithm _______________________________________ 7<br>
+		2.3. Implementation of LBM Algorithm on GPGPU Systems _________________________ 8<br>
+		3. Proposed Software Architecture ______________________________________________ 13<br>
+		3.1. Overview ____________________________________________________________ 13<br>
+		3.2. Subsystem Decomposition_______________________________________________ 13<br>
+		3.3. Hardware/Software Mapping ____________________________________________ 13<br>
+		3.4. Persistent Data Management ____________________________________________ 14<br>
+		3.5. Access Control and Security______________________________________________ 14<br>
+		3.6. Global Software Control ________________________________________________ 14<br>
+		3.7. Boundary Conditions ___________________________________________________ 15<br>
+		4. Subsystem Services_________________________________________________________ 16<br>
+		5. Glossary _________________________________________________________________ 17<br>
+		6. References _______________________________________________________________ 19<br>
+		6.1. References ___________________________________________________________ 19<br>
+		6.2. Table of Figures _______________________________________________________ 19<br>
+
+		<h2>1. Introduction</h2>
+
+		<h3>1.1. Purpose of the System</h3>
+
+		This project aims to develop a novel simulation based on the Lattice Boltzmann
+		Method (LBM) accelerated with Tensor Cores for high-performance computational fluid
+		dynamics (CFD) simulations. The study targets multi-GPU, multi-server supercomputer
+		infrastructures like TÜBİTAK TRUBA, aiming to provide an open-source platform suitable
+		for modern engineering and scientific research needs.
+		The main advantage of the LBM algorithm is that it can provide sufficient accuracy at
+		lower resolutions when compared to traditional Navier-Stokes solvers. This advantage allows
+		for the modelling of complex boundary conditions of fluids in both gas and liquid phases and
+		effective execution on multi-GPU systems. The study aims to develop the algorithm's memory
+		and processor usage in a linearly scalable manner; additionally, it plans to make inter-memory
+		communication latency invisible with asynchronous data transfer in the memory hierarchy.
+		The project includes the real-time visualization of simulation outputs and the
+		development of an interface where users can define simulation variables. This interface will
+		allow users to visually examine data such as flow rate and pressure and interactively manage
+		the simulation.
+		The project's outputs are planned to be published as open-source, making them
+		available for other research in advanced engineering fields such as space, aviation,
+		automotive, and medicine. The findings obtained during this research process are expected to
+		contribute to the literature by being published in international conferences and journals.
+
+		<h3>1.2. Design Goals</h3>
+
+		The primary goal of the project is to develop a high-performance Computational Fluid
+		Dynamics (CFD) simulation system using the Lattice Boltzmann Method (LBM), optimized
+		for multi-GPU supercomputing platforms with tensor core acceleration. The following
+		specific design goals have been identified:
+
+		<h4>1.2.1. Performance and Scalability</h4>
+
+		• Mode Variability: The LBM algorithm will support multiple configurations, including
+		D3Q15, D3Q19, and D3Q27, with floating-point precisions of 64-bit, 32-bit, and 16-
+		bit.
+		• Linear Scaling: System performance will scale linearly with increased computational
+		and memory resources.
+		• Optimal Memory Utilization: The algorithm will fully utilize the available video and
+		main memory, supporting the processing of data at the highest resolutions that the
+		system can store.
+		• Asynchronous Data Transfer: The algorithm will process data in chunks and
+		asynchronously transfer the next data segment up the memory hierarchy (video
+		memory → main memory → disk) during processing, hiding memory latency.
+
+		<h4>1.2.2. Consistency with Theoretical Results</h4>
+
+		The algorithm will be tested against analytical solutions of Navier-Stokes equations for
+		specific configurations. Accuracy will be evaluated by comparing simulation results with
+		analytical solutions using Root Mean Square Error (RMSE), ensuring convergence to
+		theoretical values.
+
+		<h4>1.2.3. Visualization</h4>
+
+		• The simulation outputs for liquid and gas phases will be visualized in real time using
+		techniques such as the Marching Cubes algorithm for mesh rendering and Volumetric
+		Raycasting.
+		• Additional data, such as pressure and flow velocity, will be presented through methods
+		like isopotential line visualization.
+
+		<h4>1.2.4. User Interface</h4>
+
+		• A user interface will allow for the specification of simulation variables and real-time<br>
+		examination of visual outputs without impacting system performance.<br>
+		• The simulation will support pausing, modification of parameters, and resumption of<br>
+		operations.<br>
+		• Simulation and visualization data will be stored in selected file formats (e.g.,<br>
+		OpenVBD, NanoVBD) for later playback or further analysis.<br>
+
+		<h3>1.3. Definitions, Acronyms, and Abbreviations</h3>
+
+		• CFD (Computational Fluid Dynamics): A branch of fluid mechanics that uses
+		numerical analysis and data structures to analyse and solve problems that involve fluid
+		flows.
+		• LBM (Lattice Boltzmann Method): A numerical method for simulating fluid
+		dynamics based on the statistical modelling of particle distribution functions.
+		• GPGPU (General-Purpose Graphics Processing Unit): The use of GPUs for tasks
+		typically handled by CPUs, leveraging their parallel processing capabilities for non-
+		graphical computations.
+		• WMMA (Warp Matrix Multiply-Add): A CUDA instruction set designed for
+		accelerating matrix operations, particularly useful for tensor core computations.
+
+		<h3>1.4. Overview</h3>
+
+		This report provides a high-level design overview of the BoltzmannFluids project, which
+		aims to develop a scalable, high-performance LBM-based CFD simulation optimized for
+		multi-GPU systems with tensor core acceleration. The design includes a subsystem
+		decomposition covering simulation, visualization modules, and user interaction layers.
+		The following sections explain the current software architecture, proposed software
+		architecture, and subsystem services. A glossary is included to cover technical and a complete
+		list of references that cover the works we have discussed in this report.
+		2. Current Software Architecture
+
+		<h3>2.1. Lattice Boltzmann Method Algorithm</h3>
+
+		In traditional CFD algorithms, the Navier-Stokes partial differential equations, which are
+		directly solved, are derived from the conservation laws of momentum and mass for point
+		particles within a continuous volume. These algorithms assume that the particles in their
+		structure have infinitesimally small sizes. This assumption results in discrete voxels or
+		particles created during the discretization of Navier-Stokes equations having only one
+		momentum vector, even if their sizes are not point-like. Therefore, these algorithms require
+		high resolutions to obtain sufficiently accurate results. Otherwise, the volume sizes of the
+		voxels modelled as points lead to erroneous predictions.
+		The LBM algorithm, unlike traditional CFD algorithms, works by modelling the statistical
+		distribution of momentum vectors of particles within a sufficiently small volume, rather than
+		directly discretizing and numerically solving the Navier-Stokes equations. Although LBM
+		predicts the same results as the Navier-Stokes equations on a macroscopic scale, it does not
+		require voxels as small as other algorithms to converge to real values. This allows for the
+		modelling of complex boundary conditions of geometries, turbulence calculations with Large
+		Eddy Simulations, and the modelling of multiphase fluids containing both liquid and gas
+		phases simultaneously.
+		The LBM algorithm maintains the distribution of momentum vectors of particles within
+		each voxel in a discrete structure. For a 2D simulation, each voxel can hold momentum
+		magnitudes in 5 or 9 directions. For 3D, this number is often used as 15, 19, and 27
+		momentum vectors, but configurations with 7 and 13 vectors also exist. The number of
+		modelled momentum vectors increases memory usage and computational requirements per
+		voxel, as well as enhances simulation accuracy.
+		Figure 1: D2Q9 and D2Q5 configurations [1]
+		Figure 2: LBM Momentum Vectors Configurations [2]
+
+		<h3>2.2. Lattice Boltzmann Method Algorithm</h3>
+
+		In Navier-Stokes solvers, the commonly used two-step projection-advection method is
+		analogous to the two-step process in LBM. The first step is the collision phase, which
+		balances the momentum and density values in the system over time. The second step is the
+		streaming phase, responsible for distributing the mass in the cells to neighbouring cells
+		according to the cell's momentum distribution.
+		The distribution 𝑓𝑖(𝑥⃗ , 𝑡) is defined as the amount of fluid mass moving in the direction of
+		vector 𝑒⃗𝑖 at position 𝑒⃗𝑖 , which will reach the point 𝑥⃗ + 𝑒⃗𝑖 at time 𝑡 + 𝛿𝑡. 𝑒⃗𝑖 is the name of the
+		i-th vector in the configuration.
+
+		<h4>2.2.1. Streaming Phase</h4>
+
+		𝑓𝑖∗(𝑥⃗ , 𝑡) = 𝑓𝑖(𝑥⃗ + 𝑒⃗𝑖, 𝑡 + 𝛿𝑡)
+		In the streaming phase, the fluid masses in the cells are moved in the direction of the
+		cells' momentum vectors as shown by the flow equation, modelling the flow. During the
+		streaming phase, cells that come into contact with boundaries apply boundary rules.
+
+		<h4>2.2.2. Collision Phase</h4>
+
+		The collision phase is defined as follows:
+		𝑓𝑖∗(𝑥⃗ , 𝑡) = 𝑓𝑖(𝑥⃗ , 𝑡) + 𝑓𝑖
+		𝑒𝑞(𝑥⃗ , 𝑡) − 𝑓𝑖(𝑥⃗ , 𝑡)
+		𝜏𝑓
+		Here, 𝑓𝑖∗(𝑥⃗ , 𝑡) is the new momentum distribution after the collision phase. 𝜏𝑓 is the
+		coefficient that models the kinetic viscosity of the fluid by determining the speed at which the
+		collision phase occurs. 𝑓𝑖
+		𝑒𝑞(𝑥⃗ , 𝑡) is the equilibrium momentum in the direction i. [3]
+		𝑓𝑖
+		𝑒𝑞(𝑥⃗ , 𝑡) = 𝜔𝑖𝜌 (1 + 3𝑒⃗𝑖𝑢⃗⃗
+		𝑐2 + 9(𝑒⃗𝑖𝑢⃗⃗ )2
+		2𝑐4 − 3(𝑢⃗⃗ )2
+		2𝑐2 )
+		In this equation, 𝜌 is the fluid density, 𝑐 = 3√𝑅𝑇 , 𝑢 is the fluid velocity vector, and 𝜔𝑖 are
+		the coefficients of the Taylor series expansion.
+		For the 2DQ9 configuration, the distribution of 𝜔𝑖 is as follows:
+		The LBM algorithm is run in the following order:
+		Initialization: Input the initial velocity, density, and momentum distribution.
+		Streaming: Moving the densities in the 𝑒⃗𝑖 direction by updating 𝑓𝑖(x⃗⃗, 𝑡) according to the flow
+		equation.
+		Collision: Calculate 𝑓𝑖
+		𝑒𝑞(x⃗⃗, 𝑡) and update 𝑓𝑖(x⃗⃗, 𝑡) at a rate dependent on 𝜏𝑖.
+		Loop: Continuously execute the Streaming and Collision phases throughout the simulation
+		duration.
+
+		<h3>2.3. Implementation of LBM Algorithm on GPGPU Systems</h3>
+
+		GPGPU architectures consist of vector computing units called "Streaming
+		Multiprocessors" (SMs), which operate independently and asynchronously. Each SM contains
+		a large register file and a shared L1 cache. An SM can run up to 512 threads. As the number
+		of threads running on an SM increases, the amount of registers per thread decreases,
+		negatively impacting thread performance. However, each thread within an SM can
+		communicate and synchronize using the shared L1 cache. This allows for high thread counts
+		per SM in tasks requiring collaboration and data sharing, while independent problems benefit
+		from running 32 or 64 threads per SM for higher performance.
+		Figure 3: Nvidia GPGPU Architecture Diagrams [4]
+		Each SM contains integer units (INT32) for performing integer arithmetic and logic
+		instructions, floating-point units (FP32) for executing floating-point and FMA (Fused
+		Multiply-Add) instructions, and a special functions unit (SFU) for instructions using floating-
+		point division, trigonometric, and special mathematical functions. Additionally, there are
+		rasterizer accelerators and texture interpolation units for use in 3D computer graphics
+		applications.
+		With Nvidia's Turing architecture, released in 2018, linear algebra units (Tensor
+		Cores) that accelerate matrix multiplication and addition (WMMA - Warp Matrix Multiply-
+		Add) instructions and ray tracing accelerators were included in GPGPUs.
+
+		<h4>2.3.1. Implementation of the Streaming Phase on GPGPU Systems</h4>
+
+		For the streaming phase, updating the momentum distribution of each voxel can be
+		defined as the task of a thread. However, since the threads update their responsible voxels
+		asynchronously, such a definition would create a race condition among the threads. To
+		prevent race conditions, a copy of the momentum distributions should also be kept in
+		memory, and during each update, one data set should be read while the other is updated. The
+		algorithm can be executed by swapping the pointers of the read and written data at each
+		update.
+		There are two methods for storing the vectors of momentum distributions in memory,
+		each as a floating-point number: Array of Structures and Structure of Arrays.
+		Figure 4: Array Of Structures [2]
+		Figure 5: Structure of Arrays [2]
+		The Structure of Arrays method results in higher cache hits because it ensures that
+		consecutive threads read from consecutive memory addresses.
+
+		<h4>2.3.2. Implementation of the Collision Phase on GPGPU Systems</h4>
+
+		To execute the Collision Phase, the total mass amount and net momentum vector in the voxels
+		must be calculated by summing the discretized momentum vectors.
+		𝜌(𝑥⃗ , 𝑡) = ∑ 𝑓𝑖(𝑥⃗ , 𝑡)
+		𝑖
+		𝑢⃗⃗ (𝑥⃗ , 𝑡) = 1
+		𝜌 ∑ 𝑐⃗𝑖
+		𝑖
+		𝑓𝑖(𝑥⃗ , 𝑡)
+		𝑓𝑖
+		𝑒𝑞(𝜌(𝑥⃗ , 𝑡), 𝑢⃗⃗ (𝑥⃗ , 𝑡)) = 𝜔𝑖𝜌 ∙ (𝑢⃗⃗ ∙ 𝑐⃗𝑖
+		𝑐2 + (𝑢⃗⃗ ∙ 𝑐⃗𝑖)2
+		2𝑐4 + 1 − 𝑢⃗⃗ ∙ 𝑢⃗⃗
+		2𝑐2 )
+		𝑓𝑖∗(𝑥⃗ , 𝑡) = 𝑓𝑖(𝑥⃗ , 𝑡) + 𝑓𝑖
+		𝑒𝑞(𝑥⃗ , 𝑡) − 𝑓𝑖(𝑥⃗ , 𝑡)
+		𝜏𝑓
+		The equations describing the collision phase are independent for each voxel and do not
+		require solving a linear system like the projection phases of other Navier-Stokes solvers,
+		making them inherently suitable for parallel architectures. In this project, a novel algorithm
+		will be developed to enhance performance by calculating the dot product operations in the
+		collision phase for all voxels at the SM level using Tensor Cores' WMMA instructions.
+		Figure 6: WMMA Instruction Diagram [5]
+		Figure 7: Structure of WMMA Instructions
+		WMMA instructions are block-based rather than thread-based, unlike FMA or other
+		instructions. When a WMMA instruction is processed, the entire block of threads works
+		together to perform a matrix multiplication. According to the specifications of the A100
+		40GB graphics card, FMA instructions can achieve a performance of 19.49 TFLOPs, while
+		this number reaches 155.92 TFLOPs with WMMA instructions.
+
+		<h4>2.3.3. Execution of the LBM Algorithm on Multi-Server Multi-GPU</h4>
+
+		Systems
+		When implementing the LBM algorithm on multi-server multi-GPU systems, the simulation
+		space is divided into parts, with each GPU processing its part independently. Although LBM
+		is suitable for implementation on a single GPU, the need to know the momentum distributions
+		around the voxel being processed in the streaming phase requires each space part to query the
+		1-voxel-thick wall around it from other space parts. When these space parts are located on
+		different GPUs and different servers, the wall information must be shared between parts
+		before each streaming phase using MPI (Message Passing Interface) and NCCL (Nvidia
+		Collective Communications Library).
+		Figure 8: Filtered-Back-Projection Algorithm Diagram by P. Chen et al. [6,7]
+		The communication protocol between GPUs will be developed inspired by the protocol
+		used by P. Chen et al. [6], [7] in the Filtered-Back-Projection algorithm for computer x-ray
+		tomography on the ABCI supercomputer.
+		3. Proposed Software Architecture
+
+		<h3>3.1. Overview</h3>
+
+		The proposed software architecture is designed to implement a high-performance Lattice
+		Boltzmann Method (LBM)-based fluid dynamics simulation optimized for multi-GPU and
+		multi-server systems. Our key innovation lies in the collision phase implementation: Unlike
+		traditional Navier-Stokes solvers that require solving linear systems in their projection phases,
+		the collision equations in LBM are inherently independent for each voxel, making them
+		naturally suitable for parallel architectures. We have developed a novel algorithm that
+		leverages GPU Tensor Cores' WMMA (Warp Matrix Multiply-Accumulate) instructions
+		to compute dot product operations for all voxels at the SM (Streaming Multiprocessor) level,
+		resulting in significant performance improvements. The architecture integrates a simulation
+		engine, visualization module, and user interface subsystems. The system is structured to
+		support asynchronous data transfers, minimize memory latency, and enable real-time
+		visualization and user interaction.
+
+		<h3>3.2. Subsystem Decomposition</h3>
+
+		The architecture is divided into three subsystems: the LBM Simulation Engine, the
+		Visualization Module, and the User Interface. The simulation engine executes the LBM to
+		compute fluid dynamics. The visualization module processes data in real-time to generate
+		graphical outputs. The user interface enables users to interact with the system by allowing
+		them to specify simulation parameters, such as fluid properties, boundary conditions, and
+		resolution settings. Additionally, it provides controls to start, pause, resume, or modify
+		simulations.
+
+		<h3>3.3. Hardware/Software Mapping</h3>
+
+		The hardware and software components of the system are designed to maximize the
+		computational performance of multi-GPU supercomputers or distributed environments. The
+		proposed system is designed to run high-resolution LBM simulations using cutting-edge GPU
+		configurations, equipped with Tensor Cores for accelerating matrix operations such as those
+		performed in the LBM algorithm's collision phase. These GPUs running the LBM algorithm
+		on multi-GPU systems and supercomputer systems with multiple servers using CUDA-aware
+		MPI and NVCCL infrastructure. The hardware setup includes multiple GPU configurations
+		tailored for different simulation scales.
+		Additionally, tests will be conducted on a variety of GPU setups, including [1-2-4x
+		A100], [1-2-4-8x H100], and [1-2-4-8x RTX 4090] configurations, over a total duration of 44
+		hours to evaluate performance scalability. These tests are planned to do so on the vast.ai
+		infrastructure.
+
+		<h3>3.4. Persistent Data Management</h3>
+
+		The system supports asynchronous data transfers across the memory hierarchy (video
+		memory → main memory → disk) to minimize latency during simulation. This allows
+		simultaneous processing of one data segment while the next is being prepared, ensuring
+		smooth and uninterrupted operations.
+		It is aimed to save the simulation outputs, including momentum distributions and
+		visualizations, in a determined file formats (OpenVBD, NanoVBD, etc.) and to replay the
+		recorded data.
+
+		<h3>3.5. Access Control and Security</h3>
+
+		The system features access control mechanisms to ensure data security and prevent
+		unauthorized usage. Secure data transmission protocols are integrated into CUDA-aware MPI
+		and NCCL communications to protect inter-GPU and inter-server data exchanges.
+
+		<h3>3.6. Global Software Control</h3>
+
+		Each subsystem (LBM simulation engine, visualization module, and user interface) plays a
+		specific role, but their functionality is interconnected to deliver the desired performance and
+		usability:
+		The LBM Simulation Engine continuously computes fluid dynamics data through the
+		Streaming and Collision phases. This data is then made available to the Visualization
+		Module, which processes it in real-time to generate graphical outputs. The communication
+		between these two subsystems is optimized for minimal latency, with data transfers occurring
+		asynchronously to prevent bottlenecks.
+		The User Interface communicates directly with the simulation engine to transmit user-
+		defined parameters, such as fluid properties and boundary conditions, and to control the
+		simulation state (e.g., start, pause, resume, or modify). Simultaneously, it retrieves processed
+		visualization outputs from the visualization module to present them to the user in real-time.
+
+		<h3>3.7. Boundary Conditions</h3>
+
+		Boundary conditions in multi-GPU simulations includes challenges such as memory limits,
+		communication latency, and synchronization. For high-resolution simulations such as
+		1600x1600x1600 simulations, memory is managed by partitioning the simulation space into
+		smaller segments and using asynchronous transfers to free up GPU memory.
+		Communication latency, especially in multi-server setups, is addressed by overlapping
+		communication with computation, caching boundary data locally, and using optimized
+		protocols like NCCL and CUDA MPI. This minimizes bottlenecks during data exchange.
+		Moreover, load balancing ensures that workloads are distributed evenly across GPUs.
+		4. Subsystem Services
+		The proposed architecture is divided into three primary subsystems: the LBM Simulation
+		Engine, the Visualization Module, and the User Interface.
+
+		<h4>4.1.1. The LBM Simulation Engine</h4>
+
+		The LBM Simulation Engine serves as the core computational component, responsible for
+		executing the Lattice Boltzmann Method algorithm. It efficiently handles the Streaming Phase
+		and Collision Phase, ensuring accurate fluid dynamics modelling. Memory organization is
+		optimized to enhance cache hits and minimize latency, using techniques like the Structure of
+		Arrays. This subsystem also manages data exchange between GPUs within a single server and
+		across multiple servers in supercomputing environments. The engine leverages CUDA MPI,
+		and NCCL to enable seamless operation on multi-GPU systems and across distributed
+		supercomputers. It supports running the LBM algorithm on both single-server systems with
+		multiple GPUs and multi-server systems, ensuring scalability. Additionally, the simulation
+		and visualization tasks are distributed across different GPUs, with high-speed data
+		communication ensuring synchronization.
+
+		<h4>4.1.1. The Visualization Module</h4>
+
+		The Visualization Module is responsible for generating real-time visualizations of
+		simulation outputs, such as fluid velocity, pressure fields, and density gradients. It employs
+		advanced rendering techniques, including the Marching Cubes algorithm for generating fluid
+		surface meshes, Volumetric Raycasting for detailed visualization of internal structures, and
+		Isopotential Line Visualization to represent scalar fields like pressure. These visualizations
+		provide users with an intuitive understanding of the simulation data in real-time.
+
+		<h3>4.1.1. The User Interface</h3>
+
+		The User Interface offers a graphical platform for interacting with the simulation. It allows
+		users to define parameters such as fluid properties and boundary conditions, control the
+		simulation execution (e.g., pause, resume, or modify parameters), and view real-time
+		visualization outputs. This interface is designed to integrate seamlessly with the backend
+		systems, ensuring ease of use without compromising performance.
+
+		<h2>5. Glossary</h2><br>
+		▪ Computational Fluid Dynamics (CFD): A branch of fluid mechanics using numerical<br>
+		analysis and data structures to analyse and solve problems involving fluid flows.<br>
+		▪ CUDA: NVIDIA's parallel computing platform and programming model for general<br>
+		computing on their GPUs.<br>
+		▪ D3Q15, D3Q19, D3Q27: LBM configurations referring to 3D simulations with 15, 19,<br>
+		or 27 discrete velocity directions respectively. Higher numbers generally provide better<br>
+		accuracy at the cost of computational resources.<br>
+		▪ Fused Multiply-Add (FMA) Instructions: A floating-point operation that computes<br>
+		(a×b)+c with a single rounding step, providing better performance and precision than<br>
+		separate operations.<br>
+		▪ General-Purpose Graphics Processing Unit (GPGPU): The use of graphics<br>
+		processing units for non-graphical calculations, particularly in parallel processing<br>
+		applications.<br>
+		▪ L1 Cache: A small, fast memory cache located closest to each processing core,<br>
+		designed to reduce memory access latency.<br>
+		▪ Lattice Boltzmann Method (LBM): A numerical method for simulating fluid<br>
+		dynamics based on statistical physics and kinetic theory rather than directly solving<br>
+		Navier-Stokes equations.<br>
+		▪ Marching Cubes: An algorithm for creating polygonal meshes of constant density<br>
+		surfaces from three-dimensional scalar fields.<br>
+		▪ Message Passing Interface (MPI): A standardized message-passing library interface<br>
+		for parallel and distributed computing.<br>
+		▪ Momentum Distribution Function: In LBM, a function describing the statistical<br>
+		distribution of particle momenta at each point in space and time.<br>
+		▪ Navier-Stokes Equations: Fundamental partial differential equations describing the<br>
+		motion of viscous fluid substances, forming the basis of CFD.<br>
+		▪ NVIDIA Collective Communications Library (NCCL): A library providing multi-<br>
+		GPU and multi-node collective communication primitives optimized for NVIDIA<br>
+		GPUs.<br>
+		▪ OpenVDB/NanoVDB: Hierarchical data structures and file formats for efficient storage<br>
+		and manipulation of sparse volumetric data.<br>
+		▪ Root Mean Square Error (RMSE): A statistical measure of the differences between<br>
+		predicted and observed values, used to evaluate simulation accuracy.<br>
+		▪ SM (Streaming Multiprocessor): The fundamental processing unit in NVIDIA GPUs,<br>
+		containing multiple CUDA cores, cache, and other specialized processors.<br>
+		▪ Tensor Core: Specialized processing units in modern NVIDIA GPUs designed to<br>
+		accelerate matrix multiplication and convolution operations.<br>
+		▪ TFLOP: A measure of computing performance representing one trillion floating-point<br>
+		operations per second.<br>
+		▪ Thread: The smallest sequence of programmed instructions that can be managed<br>
+		independently by a scheduler in parallel computing.<br>
+		▪ TRUBA: TÜBİTAK's high-performance computing infrastructure supporting scientific<br>
+		research in Turkey.<br>
+		▪ Volumetric Raycasting: A rendering technique that projects rays through volumetric<br>
+		data to create 2D images, commonly used in scientific visualization.<br>
+		▪ Voxel: A value on a regular grid in three-dimensional space, analogous to a pixel in 2D.<br>
+		▪ WMMA (Warp Matrix Multiply-Add) Instructions: Specialized instructions for<br>
+		performing matrix multiplication and accumulation operations on tensor cores in<br>
+		modern NVIDIA GPUs.<br>
+
+		<h2>6. References</h2>
+
+		<h3>6.1. References</h3>
+
+		[1] E. Walther, R. Bennacer and C. De Sa, “Lattice Boltzmann Method and diffusion in materials with<br>
+		large diffusivity ratios,” Thermal Science, p. 206, 2016.<br>
+		[2] M. Lehmann, “High Performance Free Surface LBM on GPUs,” 2019.<br>
+		[3] P. Pradipto and A. Purqon, “Accuracy and Numerical Stabilty Analysis of Lattice Boltzmann<br>
+		Method with Multiple Relaxation Time for Incompressible Flows,” Journal of Physics: Conference<br>
+		Series, p. 012035, 2017.<br>
+		[4] E. Kilgariff, H. Moreton, N. Stam and B. Bell, “NVIDIA Turing Architecture In-Depth,” 2018.<br>
+		[5] J. Appleyard and S. Yokim, “Programming Tensor Cores in CUDA 9,” 2017.<br>
+		[6] P. C. e. al., “Scalable FBP Decomposition for Cone-Beam CT Reconstruction,” in SC21:<br>
+		International Conference for High Performance Computing, Networking, Storage and Analysis, St.<br>
+		Louis, 2021.<br>
+		[7] C. Veerle and M. B., “High-resolution X-ray computed tomography in geosciences: A review of the<br>
+		current technology and applications,” Earth-Science Reviews, pp. 1-17, 2013.<br>
+
+		<h3>6.2. Table of Figures</h3>
+
+		Figure 1: D2Q9 and D2Q5 configurations [1] .......................................................................................... 7<br>
+		Figure 2: LBM Momentum Vectors Configurations [2] ............................................................................ 7<br>
+		Figure 3: Nvidia GPGPU Architecture Diagrams [4] ................................................................................. 9<br>
+		Figure 4: Array Of Structures [2]............................................................................................................ 10<br>
+		Figure 5: Structure of Arrays [2] ............................................................................................................ 10<br>
+		Figure 6: WMMA Instruction Diagram [5] ............................................................................................. 11<br>
+		Figure 7: Structure of WMMA Instructions ........................................................................................... 11<br>
+		Figure 8: Filtered-Back-Projection Algorithm Diagram by P. Chen et al. [6,7] ....................................... 12<br>
+
+	</body>
+</html>
